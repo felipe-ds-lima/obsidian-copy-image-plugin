@@ -1,7 +1,7 @@
 {
 	"id": "copy-image",
 	"name": "Copy Image from Obsidian",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "0.15.0",
 	"description": "Easily copy image from Obsidian to clipboard by right clicking image.",
 	"author": "Felipe D.S. Lima",
