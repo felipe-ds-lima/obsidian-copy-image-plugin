@@ -1,6 +1,6 @@
 # Obsidian Copy Image Plugin
 
-This is a plugin for Obsidian, a popular knowledge base application that works on top of a local folder of plain text Markdown files. The Obsidian Copy Image Plugin enhances your Obsidian experience by allowing you to easily copy images directly from your notes.
+Easily copy image from Obsidian to clipboard by right clicking image.
 
 ## Features
 
