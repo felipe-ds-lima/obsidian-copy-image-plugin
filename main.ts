@@ -1,7 +1,5 @@
 import { Notice, Plugin } from "obsidian";
 
-// Remember to rename these classes and interfaces!
-
 interface CopyImagePluginSettings {
 	mySetting: string;
 }
