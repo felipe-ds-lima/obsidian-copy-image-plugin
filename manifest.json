@@ -1,0 +1,11 @@
+{
+	"id": "copy-image",
+	"name": "Copy Image",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Easily copy image to clipboard by right clicking image.",
+	"author": "Felipe D.S. Lima",
+	"authorUrl": "https://github.com/felipe-ds-lima",
+	"fundingUrl": "patreon.com/user?u=56472872",
+	"isDesktopOnly": false
+}
