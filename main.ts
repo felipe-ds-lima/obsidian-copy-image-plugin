@@ -1,15 +1,7 @@
 import { Notice, Plugin } from "obsidian";
 
-interface CopyImagePluginSettings {
-	mySetting: string;
-}
-
 export default class CopyImagePlugin extends Plugin {
-	settings: CopyImagePluginSettings;
-
 	async onload() {
-		await this.loadSettings();
-
 		this.registerDomEvent(document, "contextmenu", (evt: MouseEvent) => {
 			const images = document.getElementsByTagName("img");
 			(async () => {
@@ -25,6 +17,9 @@ export default class CopyImagePlugin extends Plugin {
 							])
 							.then(() => {
 								new Notice("Copied image URL to clipboard!");
+							})
+							.catch(() => {
+								new Notice("Failed to copy image URL to clipboard!");
 							});
 						break;
 					}
@@ -34,12 +29,4 @@ export default class CopyImagePlugin extends Plugin {
 	}
 
 	onunload() {}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
 }
