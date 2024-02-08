@@ -49,7 +49,7 @@ export default class CopyImagePlugin extends Plugin {
 			);
 		} else {
 			// Mobile
-			this.registerDomEvent(document, "click", (evt: MouseEvent) => {
+			this.registerDomEvent(document, "touchstart", (evt: TouchEvent) => {
 				const images = document.getElementsByTagName("img");
 				(async () => {
 					for (let i = 0; i < images.length; i++) {
