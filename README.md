@@ -15,8 +15,12 @@ Easily copy image from Obsidian to clipboard by right clicking image.
 5. Click Install.
 6. Once installed, toggle the plugin on in the list of installed plugins.
 
-## Usage
+## Usage In Desktop
 
 1. Right-click on an image to 'Copy Image' to clipboard.
+
+## Usage In Mobile
+
+1. Just touch the image.
 
 Enjoy your enhanced Obsidian experience with the Obsidian Copy Image Plugin!
