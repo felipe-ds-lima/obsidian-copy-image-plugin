@@ -2,83 +2,91 @@ import { Notice, Plugin, Platform } from "obsidian";
 
 export default class CopyImagePlugin extends Plugin {
 	async onload() {
-		if (!Platform.isMobile) {
+		if (Platform.isMobile) {
 			this.registerDomEvent(
 				document,
-				"contextmenu",
-				(evt: MouseEvent) => {
-					if (Platform.isMacOS) {
-						const obsidianWindow = window.open(
-							"obsidian://open",
-							"_self"
-						);
-						if (obsidianWindow) {
-							obsidianWindow.focus();
-						} else {
-							new Notice("Failed to focus Obsidian window.");
-						}
+				"touchstart",
+				async (evt: TouchEvent) => {
+					if (this.isImage(evt)) {
+						new Notice("Copying the image...");
+						await this.copyImageToClipboard(evt);
 					}
-					new Notice("Copying image URL...");
-
-					setTimeout(async () => {
-						if (
-							evt.target instanceof HTMLImageElement &&
-							evt.target.tagName === "IMG"
-						) {
-							const response = await fetch(evt.target.src);
-							const imageBlob = await response.blob();
-							navigator.clipboard
-								.write([
-									new ClipboardItem({
-										[imageBlob.type]: imageBlob,
-									}),
-								])
-								.then(() => {
-									new Notice(
-										"Copied image URL to clipboard!"
-									);
-								})
-								.catch(() => {
-									new Notice(
-										"Failed to copy image URL to clipboard!"
-									);
-								});
-						}
-					}, 100);
 				}
 			);
 		} else {
-			// Mobile
-			this.registerDomEvent(document, "touchstart", (evt: TouchEvent) => {
-				const images = document.getElementsByTagName("img");
-				(async () => {
-					for (let i = 0; i < images.length; i++) {
-						if (images[i].contains(evt.target as Node)) {
-							const response = await fetch(images[i].src);
-							const imageBlob = await response.blob();
-							navigator.clipboard
-								.write([
-									new ClipboardItem({
-										[imageBlob.type]: imageBlob,
-									}),
-								])
-								.then(() => {
-									new Notice(
-										"Copied image URL to clipboard!"
-									);
-								})
-								.catch(() => {
-									new Notice(
-										"Failed to copy image URL to clipboard!"
-									);
-								});
-							break;
+			this.registerDomEvent(
+				document,
+				"contextmenu",
+				async (evt: MouseEvent) => {
+					if (this.isImage(evt)) {
+						try {
+							new Notice("Copying the image...");
+							await this.trySetFocus();
+							await this.waitForFocus();
+							await this.copyImageToClipboard(evt);
+						} catch (e) {
+							new Notice(e.message);
 						}
 					}
-				})();
-			});
+				}
+			);
 		}
 	}
 
 	onunload() {}
+
+	private async wait(ms: number) {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
+
+	private isImage(evt: MouseEvent | TouchEvent) {
+		return (
+			evt.target instanceof HTMLImageElement &&
+			evt.target.tagName === "IMG"
+		);
+	}
+
+	private async trySetFocus() {
+		if (!document.hasFocus()) {
+			const obsidianWindow = window.open("obsidian://open", "_self");
+			if (obsidianWindow) {
+				obsidianWindow.focus();
+			} else {
+				throw new Error("Failed to focus Obsidian app.");
+			}
+		}
+	}
+
+	private async waitForFocus() {
+		let timeElapsed = 0;
+
+		while (!document.hasFocus() && timeElapsed < 2000) {
+			await this.wait(50);
+			timeElapsed += 50;
+		}
+
+		if (!document.hasFocus()) {
+			throw new Error(
+				"Cannot copy image to clipboard without Obsidian app focused."
+			);
+		}
+	}
+
+	private async copyImageToClipboard(evt: MouseEvent | TouchEvent) {
+		const target = evt.target as HTMLImageElement;
+		const response = await fetch(target.src);
+		const imageBlob = await response.blob();
+		navigator.clipboard
+			.write([
+				new ClipboardItem({
+					[imageBlob.type]: imageBlob,
+				}),
+			])
+			.then(() => {
+				new Notice("Image copied to clipboard!");
+			})
+			.catch(() => {
+				new Notice("Failed to copy...");
+			});
+	}
 }
