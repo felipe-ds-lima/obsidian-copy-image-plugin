@@ -18,6 +18,7 @@ export default class CopyImagePlugin extends Plugin {
 							new Notice("Failed to focus Obsidian window.");
 						}
 					}
+					new Notice("Copying image URL...");
 
 					setTimeout(async () => {
 						if (
