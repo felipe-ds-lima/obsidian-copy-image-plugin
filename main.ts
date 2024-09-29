@@ -3,14 +3,33 @@ import { Jimp } from 'jimp'
 
 export default class CopyImagePlugin extends Plugin {
 	async onload() {
+		console.log("Mobile device detected");
 		if (Platform.isMobile) {
+			let touchTime: number;
+
 			this.registerDomEvent(
 				document,
 				"touchstart",
 				async (evt: TouchEvent) => {
 					if (this.isImage(evt)) {
-						new Notice("Copying the image...");
-						await this.copyImageToClipboard(evt);
+						touchTime = new Date().getTime();
+
+						setTimeout(async () => {
+							if(touchTime !== 0) {
+								new Notice("Copying the image...");
+								await this.copyImageToClipboard(evt);
+							}
+						}, 1000);
+					}
+				}
+			);
+			
+			this.registerDomEvent(
+				document,
+				"touchmove",
+				async (evt: TouchEvent) => {
+					if (this.isImage(evt)) {
+						touchTime = 0;
 					}
 				}
 			);
@@ -100,8 +119,8 @@ export default class CopyImagePlugin extends Plugin {
 
 	private async copyNonPngToClipboard(imageBlob: Blob) {
 		const image = await Jimp.read(URL.createObjectURL(imageBlob))
-		const buffer= await image.getBuffer("image/png")
-		const blob = new Blob([buffer], {type: "image/png"})
+		const buffer = await image.getBuffer("image/png")
+		const blob = new Blob([buffer], { type: "image/png" })
 		this.copyPngToClipboard(blob)
 	}
 }
