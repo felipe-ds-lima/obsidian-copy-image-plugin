@@ -1,59 +1,110 @@
-import { Notice, Plugin, Platform } from "obsidian";
+import { Notice, Plugin, Platform, Editor, MarkdownView } from "obsidian";
 import { Jimp } from 'jimp'
 
 export default class CopyImagePlugin extends Plugin {
-	async onload() {
-		console.log("Mobile device detected");
-		if (Platform.isMobile) {
-			let touchTime: number;
+	touchTime = 0;
 
+	async onload() {
+		if (Platform.isMobile) {
 			this.registerDomEvent(
 				document,
 				"touchstart",
-				async (evt: TouchEvent) => {
-					if (this.isImage(evt)) {
-						touchTime = new Date().getTime();
-
-						setTimeout(async () => {
-							if(touchTime !== 0) {
-								new Notice("Copying the image...");
-								await this.copyImageToClipboard(evt);
-							}
-						}, 1000);
-					}
-				}
+				this.handleTouchStart.bind(this)
 			);
-			
+
 			this.registerDomEvent(
 				document,
 				"touchmove",
-				async (evt: TouchEvent) => {
-					if (this.isImage(evt)) {
-						touchTime = 0;
-					}
-				}
+				this.handleTouchMove.bind(this)
 			);
 		} else {
 			this.registerDomEvent(
 				document,
 				"contextmenu",
-				async (evt: MouseEvent) => {
-					if (this.isImage(evt)) {
-						try {
-							new Notice("Copying the image...");
-							await this.trySetFocus();
-							await this.waitForFocus();
-							await this.copyImageToClipboard(evt);
-						} catch (e) {
-							new Notice(e.message);
-						}
-					}
-				}
+				this.handleContextMenu.bind(this)
 			);
+		}
+
+		this.addCommand({
+			id: 'copy-image',
+			name: 'Copy image to clipboard',
+			editorCallback: this.handleCommand.bind(this),
+		});
+	}
+
+	onunload() {
+	}
+
+	private async handleCommand(editor: Editor, view: MarkdownView) {
+		const line = editor.getLine(editor.getCursor().line)
+		if (!line.includes('![[')) {
+			new Notice("Not an image file or not supported...");
+			return
+		}
+		let fileNane = line.replace(/.*!\[\[(.*?)\]\].*/, '$1');
+		if (fileNane === '') {
+			new Notice("Not an image file or not supported...");
+			return
+		}
+		if (fileNane.includes('|')) {
+			fileNane = fileNane.split('|')[0]
+		}
+		const ext = fileNane.split('.').pop()
+		if (!ext) {
+			new Notice("Not an image file or not supported...");
+			return
+		}
+		if (!['bmp', 'gif', 'jpeg', 'jpg', 'png', 'tiff'].includes(ext)) {
+			new Notice("Not an image file or not supported...");
+			return
+		}
+
+		this.app.vault.getFiles().forEach(async file => {
+			if (file.name === fileNane) {
+				new Notice("Copying the image...");
+				const url = this.app.vault.adapter.getResourcePath(file.path)
+				const response = await fetch(url);
+				const imageBlob = await response.blob();
+
+				if (imageBlob.type === "image/png") {
+					await this.copyPngToClipboard(imageBlob)
+				} else {
+					await this.copyNonPngToClipboard(imageBlob);
+				}
+			}
+		})
+	}
+
+	private async handleTouchStart(evt: TouchEvent) {
+		if (this.isImage(evt)) {
+			this.touchTime = new Date().getTime();
+
+			setTimeout(async () => {
+				if (this.touchTime !== 0) {
+					new Notice("Copying the image...");
+					await this.copyImageToClipboard(evt);
+				}
+			}, 1000);
+		}
+	}
+	private async handleTouchMove(evt: TouchEvent) {
+		if (this.isImage(evt)) {
+			this.touchTime = 0;
 		}
 	}
 
-	onunload() { }
+	private async handleContextMenu(evt: MouseEvent) {
+		if (this.isImage(evt)) {
+			try {
+				new Notice("Copying the image...");
+				await this.trySetFocus();
+				await this.waitForFocus();
+				await this.copyImageToClipboard(evt);
+			} catch (e) {
+				new Notice(e.message);
+			}
+		}
+	}
 
 	private async wait(ms: number) {
 		return new Promise((resolve) => setTimeout(resolve, ms));
