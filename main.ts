@@ -1,4 +1,5 @@
 import { Notice, Plugin, Platform } from "obsidian";
+import { Jimp } from 'jimp'
 
 export default class CopyImagePlugin extends Plugin {
 	async onload() {
@@ -33,7 +34,7 @@ export default class CopyImagePlugin extends Plugin {
 		}
 	}
 
-	onunload() {}
+	onunload() { }
 
 	private async wait(ms: number) {
 		return new Promise((resolve) => setTimeout(resolve, ms));
@@ -76,17 +77,31 @@ export default class CopyImagePlugin extends Plugin {
 		const target = evt.target as HTMLImageElement;
 		const response = await fetch(target.src);
 		const imageBlob = await response.blob();
-		navigator.clipboard
-			.write([
-				new ClipboardItem({
-					[imageBlob.type]: imageBlob,
-				}),
-			])
-			.then(() => {
-				new Notice("Image copied to clipboard!");
-			})
-			.catch(() => {
-				new Notice("Failed to copy...");
-			});
+		if (imageBlob.type === "image/png") {
+			await this.copyPngToClipboard(imageBlob)
+		} else {
+			await this.copyNonPngToClipboard(imageBlob);
+		}
+	}
+
+	private async copyPngToClipboard(imageBlob: Blob) {
+		try {
+			await navigator.clipboard
+				.write([
+					new ClipboardItem({
+						[imageBlob.type]: imageBlob,
+					}),
+				])
+			new Notice("Image copied to clipboard!");
+		} catch (error) {
+			new Notice("Failed to copy...");
+		}
+	}
+
+	private async copyNonPngToClipboard(imageBlob: Blob) {
+		const image = await Jimp.read(URL.createObjectURL(imageBlob))
+		const buffer= await image.getBuffer("image/png")
+		const blob = new Blob([buffer], {type: "image/png"})
+		this.copyPngToClipboard(blob)
 	}
 }

@@ -1,7 +1,7 @@
 {
 	"name": "copy-image",
 	"displayName": "Copy Image",
-	"version": "1.0.8",
+	"version": "1.0.9",
 	"description": "Easily copy image from Obsidian to clipboard by right clicking image.",
 	"main": "main.js",
 	"scripts": {
@@ -21,5 +21,8 @@
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
+	},
+	"dependencies": {
+		"jimp": "^1.6.0"
 	}
 }
