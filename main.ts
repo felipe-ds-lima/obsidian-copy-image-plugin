@@ -1,14 +1,33 @@
-import { Notice, Plugin, Platform, Editor, MarkdownView,  } from "obsidian";
+import { Notice, Plugin, Platform, Editor, MarkdownView, PluginSettingTab, App, Setting,  } from "obsidian";
 import { Jimp } from 'jimp'
 
+interface CopyImagePluginSettings {
+  svgToPngScale: number;
+}
+
+const DEFAULT_SETTINGS: CopyImagePluginSettings = {
+  svgToPngScale: 4
+};
+
 export default class CopyImagePlugin extends Plugin {
+	settings: CopyImagePluginSettings;
+
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
+
 	touchTime = 0;
-  targetImage: HTMLImageElement | null = null;
+	targetImage: HTMLImageElement | null = null;
 
 	async onload() {
+		await this.loadSettings();
 
-    this.registerEvent(this.app.workspace.on('editor-menu', (menu, editor, info)=>{
-      if(!this.targetImage) return;
+		this.registerEvent(this.app.workspace.on('editor-menu', (menu, editor, info)=>{
+		if(!this.targetImage) return;
 			menu.addItem((item) =>
 				item
           .setTitle('Copy image to clipboard')
@@ -17,6 +36,8 @@ export default class CopyImagePlugin extends Plugin {
           .setDisabled(!this.targetImage)
 			);
 		}))
+
+		this.addSettingTab(new CopyImagePluginSettingsTab(this.app, this));
 
 		if (Platform.isMobile) {
 			this.registerDomEvent(
@@ -171,6 +192,9 @@ export default class CopyImagePlugin extends Plugin {
 		const imageBlob = await response.blob();
 		if (imageBlob.type === "image/png") {
 			await this.copyPngToClipboard(imageBlob)
+		} else if (imageBlob.type === "image/svg+xml") {
+			// for obsidian-excalidraw-plugin plugin
+			await this.copySvgToClipboard(imageBlob);
 		} else {
 			await this.copyNonPngToClipboard(imageBlob);
 		}
@@ -190,10 +214,89 @@ export default class CopyImagePlugin extends Plugin {
 		}
 	}
 
+	private async copySvgToClipboard(imageBlob: Blob) {
+		try {
+			// 1. Create a URL for the SVG Blob
+			const url = URL.createObjectURL(imageBlob);
+			const img = new Image();
+
+			// 2. Load the image asynchronously
+			await new Promise((resolve, reject) => {
+				img.onload = resolve;
+				img.onerror = () => {
+					new Notice("Failed to load SVG image for conversion.");
+					reject();
+				};
+				img.src = url;
+			});
+
+			// 3. Setup Canvas for rasterization
+			const canvas = document.createElement('canvas');
+			// Increased scaling factor for higher resolution output
+			const scale = this.settings.svgToPngScale;
+			canvas.width = (img.width || 300) * scale;
+			canvas.height = (img.height || 300) * scale;
+
+			const ctx = canvas.getContext('2d');
+			if (!ctx) {
+				new Notice("Could not create canvas context.");
+				return;
+			}
+
+			// 4. Draw SVG to Canvas
+			ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+			// 5. Convert Canvas to PNG Blob
+			canvas.toBlob(async (pngBlob) => {
+				if (pngBlob) {
+					// 6. Reuse your existing function for PNG handling
+					await this.copyPngToClipboard(pngBlob);
+				} else {
+					new Notice("Failed to convert SVG to PNG.");
+				}
+				
+				// Clean up memory
+				URL.revokeObjectURL(url);
+			}, 'image/png');
+
+		} catch (err) {
+			new Notice("Error during SVG to PNG conversion.");
+		}
+	}
+
 	private async copyNonPngToClipboard(imageBlob: Blob) {
 		const image = await Jimp.read(URL.createObjectURL(imageBlob))
 		const buffer = await image.getBuffer("image/png")
 		const blob = new Blob([buffer], { type: "image/png" })
 		this.copyPngToClipboard(blob)
+	}
+}
+
+class CopyImagePluginSettingsTab extends PluginSettingTab {
+	plugin: CopyImagePlugin;
+
+	constructor(app: App, plugin: CopyImagePlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		let {containerEl} = this;
+		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName("SVG to PNG Scale")
+			.setDesc("The scaling factor for the converted PNG. Higher values result in higher resolution.")
+			.addSlider(slider => {
+				slider
+					.setValue(4)
+					.setLimits(1, 10, 1)
+					.setDynamicTooltip()
+					.setValue(this.plugin.settings.svgToPngScale)
+					.onChange(async (value) => {
+						this.plugin.settings.svgToPngScale = value;
+						await this.plugin.saveSettings()
+					})
+			})
 	}
 }
